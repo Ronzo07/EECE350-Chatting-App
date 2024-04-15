@@ -23,7 +23,6 @@ def fileReceive(fileName):
     file, clientAddr = recieverSocket.accept()
     data = file.recv(65536)
     filename = "received1_" + fileName
-    fcount += 1
     fo = open(filename, "wb") 
     fo.write(data)  
     fo.close() 

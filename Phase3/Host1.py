@@ -7,7 +7,6 @@ chatPort = 12000
 filePort = 12001
 hostSocket = socket(AF_INET, SOCK_DGRAM)
 hostSocket.bind((localHost, chatPort))
-fcount = 0
 username = input("Register your contact's name please: ")
 
 print()
@@ -17,15 +16,13 @@ print("Type 'exit' to leave the chat room")
 print()
 
 def fileReceive(fileName):
-    global fcount
     recieverSocket = socket(AF_INET,SOCK_STREAM)
     recieverSocket.bind((destHost,filePort))
     recieverSocket.listen(5)
 
     file, clientAddr = recieverSocket.accept()
     data = file.recv(65536)
-    filename = "received2_" + str(fcount)+ "_" + fileName
-    fcount += 1
+    filename = "received2_" + fileName
     fo = open(filename, "wb") 
     fo.write(data)  
     fo.close() 
