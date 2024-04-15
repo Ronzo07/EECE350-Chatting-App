@@ -6,7 +6,10 @@ hostPort = 12000
 hostSocket = socket(AF_INET, SOCK_DGRAM)
 hostSocket.bind(('localhost', hostPort))
 print("Host is ready")
+
 username1 = input("Register your contact's name please: ")
+# add timeout to the socket
+
 
 def Receive():
     while True:
@@ -25,6 +28,7 @@ def Send():
             break
         acknowledged = False
         try:
+            # we need to also check for ack and timeout
             while not acknowledged:
                 hostSocket.sendto((username1 + ": " + message).encode(), (hostName, hostPort))
                 ACK, addr = hostSocket.recvfrom(12000)  # Wait for ACK

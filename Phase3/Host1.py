@@ -1,60 +1,60 @@
 from socket import *
 from threading import Thread
 import sys
-destHost = '127.0.0.2'
 localHost = '127.0.0.1'
+destHost = '127.0.0.2'
 chatPort = 12000
 filePort = 12001
 hostSocket = socket(AF_INET, SOCK_DGRAM)
 hostSocket.bind((localHost, chatPort))
 fcount = 0
 username = input("Register your contact's name please: ")
+
 print()
-print("welcome to the chat room, " + username + "!")
+print("Welcome to the chat room, " + username + "!")
 print("Type 'FILE' to send a file")
 print("Type 'exit' to leave the chat room")
 print()
 
-def fileReceive():
+def fileReceive(fileName):
     global fcount
-    serverSocket1 = socket(AF_INET,SOCK_STREAM)
-    serverSocket1.bind((destHost,filePort))
-    serverSocket1.listen(5)
+    recieverSocket = socket(AF_INET,SOCK_STREAM)
+    recieverSocket.bind((destHost,filePort))
+    recieverSocket.listen(5)
 
-    file, clientAddr = serverSocket1.accept()
-    data = file.recv(2048).decode()
-    filename = 'received_file' + str(fcount) + '.txt'
+    file, clientAddr = recieverSocket.accept()
+    data = file.recv(65536)
+    filename = "received2_" + str(fcount)+ "_" + fileName
     fcount += 1
-    fo = open(filename, "w") 
+    fo = open(filename, "wb") 
     fo.write(data)  
     fo.close() 
-    serverSocket1.close()
+    recieverSocket.close()
     return
     
 
-def fileSend():
-    filename = input('Input filename you want to send: ') 
-    serverSocket2 = socket(AF_INET, SOCK_STREAM)
-    serverSocket2.connect((destHost, filePort))
+def fileSend(fileName):
+    senderSocket = socket(AF_INET, SOCK_STREAM)
+    senderSocket.connect((destHost, filePort))
     # Reading file and sending data to server 
-    fi = open(filename, "r") 
+    fi = open(fileName, "rb") 
     data = fi.read() 
     # while data: 
-    serverSocket2.send(str(data).encode()) 
+    senderSocket.send(data) 
     data = fi.read() 
     # File is closed after data is sent 
     fi.close() 
-    serverSocket2.close()
+    senderSocket.close()
     return
 
 def Receive():
     while True:
         try:
             message, addr = hostSocket.recvfrom(12000)
-            if message.decode() != "ACK" and message.decode() != "FILE":  # Don't print ACK messages
+            if message.decode() != "ACK" and (len(message.decode()) >= 4 and message.decode()[-4:] != "FILE"):  # Don't print ACK messages
                 print(message.decode())
             hostSocket.sendto("ACK".encode(), addr)  # Send ACK for all received messages
-            if message.decode() == "FILE":
+            if len(message.decode()) >= 4 and message.decode()[-4:] == "FILE":
                 print("File received!")
         except Exception as e:
             print("Error:", e)
@@ -66,8 +66,9 @@ def Send():
             hostSocket.sendto((username + " has left the chat room").encode(), (destHost, chatPort))
             sys.exit()
         elif message == 'FILE':
-            f1 = Thread(target=fileReceive)
-            f2 = Thread(target=fileSend)
+            fileName = input('Input filename you want to send: ') 
+            f1 = Thread(target=fileReceive, args=(fileName,))
+            f2 = Thread(target=fileSend, args=(fileName,))
             f1.start()
             f2.start()
             f1.join()
