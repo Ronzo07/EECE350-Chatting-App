@@ -8,6 +8,7 @@ filePort = 12001
 hostSocket = socket(AF_INET, SOCK_DGRAM)
 hostSocket.bind((localHost, chatPort))
 username = input("Register your contact's name please: ")
+nbFile = '_1_'
 
 print()
 print("Welcome to the chat room, " + username + "!")
@@ -21,13 +22,14 @@ def fileReceive(fileName):
     recieverSocket.listen(5)
 
     file, clientAddr = recieverSocket.accept()
-    data = file.recv(65536)
-    filename = "received2_" + fileName
+    filename = "received" + nbFile+fileName
     fo = open(filename, "wb") 
-    fo.write(data)  
+    data = file.recv(1024)
+    while data: # While data is being received, write it to the file
+        fo.write(data)
+        data = file.recv(1024)
     fo.close() 
     recieverSocket.close()
-    return
     
 
 def fileSend(fileName):
@@ -35,10 +37,10 @@ def fileSend(fileName):
     senderSocket.connect((destHost, filePort))
     # Reading file and sending data to server 
     fi = open(fileName, "rb") 
-    data = fi.read() 
-    # while data: 
-    senderSocket.send(data) 
-    data = fi.read() 
+    data = fi.read(1024) 
+    while data: 
+        senderSocket.send(data) 
+        data = fi.read(1024) 
     # File is closed after data is sent 
     fi.close() 
     senderSocket.close()
@@ -47,7 +49,7 @@ def fileSend(fileName):
 def Receive():
     while True:
         try:
-            message, addr = hostSocket.recvfrom(12000)
+            message, addr = hostSocket.recvfrom(chatPort)
             if message.decode() != "ACK" and (len(message.decode()) >= 4 and message.decode()[-4:] != "FILE"):  # Don't print ACK messages
                 print(message.decode())
             hostSocket.sendto("ACK".encode(), addr)  # Send ACK for all received messages
@@ -73,16 +75,30 @@ def Send():
             print("File sent!")
 
 
-        acknowledged = False
-        try:
-            # we need to also check for ack and timeout
+        CHUNK_SIZE = 1024  # 1KB per chunk
+        message_chunks = [message[i:i+CHUNK_SIZE] for i in range(0, len(message), CHUNK_SIZE)]
+
+        for chunk in message_chunks:
+            print("Sending chunk:", chunk)
+            acknowledged = False
             while not acknowledged:
-                hostSocket.sendto((username + ": " + message).encode(), (destHost, chatPort))
-                ACK, addr = hostSocket.recvfrom(chatPort)  # Wait for ACK
-                if ACK.decode() == "ACK":
-                    acknowledged = True
-        except Exception as e:
-            print("Error:", e)
+                hostSocket.settimeout(5)  # Timeout after 5 seconds
+                hostSocket.sendto((username + ": " + chunk).encode(), (destHost, chatPort))
+                try:
+                    ACK, addr = hostSocket.recvfrom(chatPort)  # Wait for ACK
+                    if ACK.decode() == "ACK":
+                        acknowledged = True
+                except timeout:
+                    print("No ACK received for chunk. Resending chunk.")
+                except Exception as e:
+                    print("Error:", e)
+                finally:
+                    hostSocket.settimeout(None)
+                    if acknowledged:
+                        print("Chunk acknowledged.")
+                    else:
+                        print("Resending chunk due to timeout.")
+
 
 t1 = Thread(target=Receive)
 t2 = Thread(target=Send)
