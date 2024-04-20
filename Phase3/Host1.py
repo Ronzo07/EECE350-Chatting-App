@@ -111,7 +111,7 @@ def Send():
                     if int(ack_seq_num) == ack_num:
                         acknowledged = True
                         ack_num += 1
-                except socket.timeout:
+                except timeout:
                     print("No ACK received for chunk. Resending chunk.")
                 except Exception as e:
                     print("Error2:", e)
