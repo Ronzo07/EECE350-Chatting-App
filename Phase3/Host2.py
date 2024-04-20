@@ -36,7 +36,7 @@ def fileReceive(fileName):
     filename = f'received{nbFile}({cntFile})_{fileName}'
     fo = open(filename, "wb") 
     data = file.recv(1024)
-    while data: # While data is being received, write it to the file
+    while data:
         fo.write(data)
         data = file.recv(1024)
     fo.close() 
@@ -46,7 +46,6 @@ def fileReceive(fileName):
 def fileSend(fileName):
     senderSocket = socket(AF_INET, SOCK_STREAM)
     senderSocket.connect((destHost, filePort))
-    # Reading file and sending data to server 
     fi = open(fileName, "rb") 
     data = fi.read(1024) 
     while data: 
@@ -68,19 +67,13 @@ def Receive():
                 if msg_content == 'exit':
                     print(f"{msg_content} received")
                     sys.exit()
-                elif msg_content == 'FILE':
+                elif msg_content.endswith('FILE'):
                     print("a file is being received")
                 else :
                     print(msg_content)
             else:
-                print(f"Received out of order: {msg_content}") # I can neglect it as it will be resend
-
-            # if message.decode() != "ACK" and (len(message.decode()) >= 4 and message.decode()[-4:] != "FILE"):  # Don't print ACK messages
-            #     print(message.decode())
-
-            # recv_socket.sendto("ACK".encode(), addr)  # Send ACK for all received messages
-            # if len(message.decode()) >= 4 and message.decode()[-4:] == "FILE":
-            #     print("File received!")
+                recv_socket.sendto(f"ACK:{msg_seq_num}".encode(), addr)
+                print(f"Received out of order: {msg_content}") 
 
         except Exception as e:
             print(message.decode())
@@ -93,7 +86,7 @@ def Send():
         if message == 'exit':
             send_socket.sendto((username + " has left the chat room").encode(), (destHost, chatPortSend))
             sys.exit()
-        elif message.endswith('FILE'):
+        elif message == 'FILE':
             fileName = input('Input filename you want to send: ') 
             f1 = Thread(target=fileReceive, args=(fileName,))
             f2 = Thread(target=fileSend, args=(fileName,))
@@ -103,14 +96,12 @@ def Send():
             f2.join()
             print("File sent!")
 
-        
-        CHUNK_SIZE = 1024  # 1KB per chunk
+        CHUNK_SIZE = 1024 
         message_chunks = [message[i:i+CHUNK_SIZE] for i in range(0, len(message), CHUNK_SIZE)]
 
         for chunk in message_chunks:
             print(f"Sending chunk with seq_num {ack_num}: {chunk}")
             acknowledged = False
-            print(ack_num)
             while not acknowledged:
                 send_socket.settimeout(5)  # Timeout after 5 seconds
                 send_socket.sendto(f"{ack_num}:{username}: {chunk}".encode(), (destHost, chatPortSend))                
@@ -129,8 +120,7 @@ def Send():
                     if acknowledged:
                             print(f"Chunk with seq_num {ack_num} acknowledged.")
                     else:
-                        print(f"Resending chunk with seq_num {ack_num} due to timeout.")        # hostSocket.settimeout(None)
-
+                        print(f"Resending chunk with seq_num {ack_num} due to timeout.")
 
 t1 = Thread(target=Receive)
 t2 = Thread(target=Send)

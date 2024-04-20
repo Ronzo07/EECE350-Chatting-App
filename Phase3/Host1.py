@@ -36,7 +36,7 @@ def fileReceive(fileName):
     filename = f'received{nbFile}({cntFile})_{fileName}'
     fo = open(filename, "wb") 
     data = file.recv(1024)
-    while data: # While data is being received, write it to the file
+    while data:
         fo.write(data)
         data = file.recv(1024)
     fo.close() 
@@ -46,7 +46,6 @@ def fileReceive(fileName):
 def fileSend(fileName):
     senderSocket = socket(AF_INET, SOCK_STREAM)
     senderSocket.connect((destHost, filePort))
-    # Reading file and sending data to server 
     fi = open(fileName, "rb") 
     data = fi.read(1024) 
     while data: 
@@ -73,6 +72,7 @@ def Receive():
                 else :
                     print(msg_content)
             else:
+                recv_socket.sendto(f"ACK:{msg_seq_num}".encode(), addr)
                 print(f"Received out of order: {msg_content}") 
 
         except Exception as e:
@@ -96,14 +96,12 @@ def Send():
             f2.join()
             print("File sent!")
 
-        
         CHUNK_SIZE = 1024 
         message_chunks = [message[i:i+CHUNK_SIZE] for i in range(0, len(message), CHUNK_SIZE)]
 
         for chunk in message_chunks:
             print(f"Sending chunk with seq_num {ack_num}: {chunk}")
             acknowledged = False
-            print(ack_num)
             while not acknowledged:
                 send_socket.settimeout(5)  # Timeout after 5 seconds
                 send_socket.sendto(f"{ack_num}:{username}: {chunk}".encode(), (destHost, chatPortSend))                
@@ -122,8 +120,7 @@ def Send():
                     if acknowledged:
                             print(f"Chunk with seq_num {ack_num} acknowledged.")
                     else:
-                        print(f"Resending chunk with seq_num {ack_num} due to timeout.")        # hostSocket.settimeout(None)
-
+                        print(f"Resending chunk with seq_num {ack_num} due to timeout.")
 
 t1 = Thread(target=Receive)
 t2 = Thread(target=Send)
