@@ -26,6 +26,11 @@ print("Type 'exit' to leave the chat room")
 print()
 
 def fileReceive(fileName):
+    """
+    Function to receive a file from the sender
+    connected to the filePort over TCP
+    receive the file as chunks of 1024 bytes
+    """
     global cntFile
     cntFile += 1
     recieverSocket = socket(AF_INET,SOCK_STREAM)
@@ -44,6 +49,11 @@ def fileReceive(fileName):
     
 
 def fileSend(fileName):
+    """
+        Function to send a file to the receiver
+        connected to the filePort over TCP
+        send the file as chunks of 1024 bytes
+    """
     senderSocket = socket(AF_INET, SOCK_STREAM)
     senderSocket.connect((destHost, filePort))
     fi = open(fileName, "rb") 
@@ -56,6 +66,14 @@ def fileSend(fileName):
     return
 
 def Receive():
+    """
+        Function to receive messages from the sender
+        connected to the chatPortRecv over UDP
+        receive the message as chunks of 1024 bytes
+        extract the sequence number and message content
+        send an ACK with the sequence number
+        print the message content
+    """
     seq_num = 0
     while True:
         try:
@@ -77,9 +95,20 @@ def Receive():
 
         except Exception as e:
             print(message.decode())
-            print("Error1:", e)
+            print("Error1:", e, file=sys.stderr)
 
 def Send():
+    """
+        Function to send messages to the receiver
+        connected to the chatPortSend over UDP
+        send the message as chunks of 1024 bytes
+        extract the sequence number and message content
+        wait for an ACK with the sequence number
+        print the message content
+        To send a file, the user must type 'FILE'
+        the user will be prompted to input the filename
+        the file will be sent using the fileSend function
+    """
     ack_num = 0
     while True:
         message = input()
@@ -112,9 +141,9 @@ def Send():
                         acknowledged = True
                         ack_num += 1
                 except timeout:
-                    print("No ACK received for chunk. Resending chunk.")
+                    print("No ACK received for chunk. Resending chunk.", file=sys.stderr)
                 except Exception as e:
-                    print("Error2:", e)
+                    print("Error2:", e, file=sys.stderr)
                 finally:
                     send_socket.settimeout(None)
                     if acknowledged:

@@ -11,6 +11,7 @@ destHost = '127.0.0.1'
 chatPortSend = 12001
 chatPortRecv = 12000
 filePort = 12002
+
 send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 recv_socket.bind((localHost, chatPortRecv))
@@ -25,6 +26,8 @@ ack_num = 0
 
 # Networking functions
 def fileReceive(fileName, update_chat_window):
+    """ Function to receive a file from the sender connected to the filePort over TCP 
+    receive the file as chunks of 1024 bytes """
     global cntFile
     cntFile += 1
     recieverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -33,7 +36,6 @@ def fileReceive(fileName, update_chat_window):
 
     file, clientAddr = recieverSocket.accept()
     filename = f'received{nbFile}({cntFile})_{fileName}'
-    # print("Receiving file...")
     fo = open(filename, "wb")
     data = file.recv(1024)
     while data:
@@ -41,7 +43,7 @@ def fileReceive(fileName, update_chat_window):
         data = file.recv(1024)
     fo.close()
     recieverSocket.close()
-    update_chat_window(f"File received: {filename}")
+    print("File received by Host1!")
 
 def fileSend(fileName):
     senderSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -53,6 +55,7 @@ def fileSend(fileName):
         data = fi.read(1024)
     fi.close()
     senderSocket.close()
+    print("File sent!")
 
 def Receive(update_chat_window):
     seq_num = 0
@@ -66,20 +69,22 @@ def Receive(update_chat_window):
                 if msg_content == 'exit':
                     update_chat_window(f"{msg_content} received")
                     sys.exit()
+                elif msg_content.endswith('FILE'):
+                    update_chat_window("File received")
                 else:
                     update_chat_window(msg_content)
             else:
                 recv_socket.sendto(f"ACK:{msg_seq_num}".encode(), addr)
-                update_chat_window(f"Received out of order: {msg_content}")
+                print(f"Received out of order: {msg_content}")
 
         except Exception as e:
-            update_chat_window("Error1: " + str(e))
+            print("Error1: " + str(e))
 
 def Send(message):
     global ack_num
     if message == 'exit':
         send_socket.sendto((username + " has left the chat room").encode(), (destHost, chatPortSend))
-        sys.exit()
+        sys.exit()        
 
     CHUNK_SIZE = 1024
     message_chunks = [message[i:i+CHUNK_SIZE] for i in range(0, len(message), CHUNK_SIZE)]
@@ -105,7 +110,7 @@ def Send(message):
 class ChatApp:
     def __init__(self, master):
         self.master = master
-        master.title("UDP/TCP Chat App")
+        master.title("UDP/TCP Chat App2")
 
         self.text_area = tk.Text(master, state='disabled', height=15, width=50)
         self.text_area.pack(padx=20, pady=10)
@@ -124,6 +129,7 @@ class ChatApp:
         self.recv_thread.start()
 
     def send_message(self):
+        """ Function to send a message to the receiver"""
         message = self.msg_entry.get()
         if message:
             self.update_chat_window(f"You: {message}")
@@ -131,16 +137,19 @@ class ChatApp:
             Send(message)
 
     def attach_file(self):
+        """ Function to attach a file to the chat window"""
         filepath = filedialog.askopenfilename()
         if filepath:
             filename = os.path.basename(filepath)  # Extract the filename from the full path
             f1 = Thread(target=fileReceive, args=(filename, self.update_chat_window))
             f2 = Thread(target=fileSend, args=(filename,))
             f1.start()
+            # add a small delay to ensure the receiver is ready to receive the file
+            for i in range(100):
+                pass
             f2.start()
-            # f1.join()
-            # f2.join()
             self.update_chat_window(f"File sent: {filename}")
+            Send("FILE")
             print("File sent!")            
 
     def update_chat_window(self, message):
